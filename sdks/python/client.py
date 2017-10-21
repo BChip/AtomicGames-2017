@@ -29,9 +29,23 @@ class Game:
     def __init__(self):
         self.units = {} # set of unique unit ids
         self.tiles = {}
+        self.resourceCords = set()
         self.directions = ['N', 'S', 'E', 'W']
 
     def gameResponse(self, json_data):
+        self.updateUnits(json_data)
+        self.updateTiles(json_data)
+
+        print json_data['tile_updates']
+        
+        unit = random.choice(tuple(self.units.keys()))
+        direction = 'S'
+        move = 'MOVE'
+        command = {"commands": [{"command": move, "unit": unit, "dir": direction}]}
+        response = json.dumps(command, separators=(',',':')) + '\n'
+        return response
+
+    def updateUnits(self, json_data):
         for unit in json_data['unit_updates']:
             id = unit['id']
             player_id = unit['player_id']
@@ -50,22 +64,21 @@ class Game:
                 can_attack = None
             self.units[id] = Unit(id, player_id, x, y, unit_type, status, health, resources, can_attack)
 
-        print json_data['tile_updates']
+    def updateTiles(self, json_data):
         for tile in json_data['tile_updates']:
             visible = tile['visible']
             x = tile['x']
             y = tile['y']
             blocked = tile['blocked']
             resources = tile['resources']
+            if resources:
+                self.resourceCords.add((x,y))
+            else:
+                try:
+                    self.resourceCords.remove((x,y))
+                except:
+                    pass
             self.tiles[(x,y)] = Tile(visible, x, y, blocked, resources)
-
-
-        unit = random.choice(tuple(self.units.keys()))
-        direction = 'S'
-        move = 'MOVE'
-        command = {"commands": [{"command": move, "unit": unit, "dir": direction}]}
-        response = json.dumps(command, separators=(',',':')) + '\n'
-        return response
 
 class Unit:
     def __init__(self, id, player_id, x, y, unit_type, status, health, resources, can_attack):
