@@ -3,6 +3,7 @@
 import sys
 import json
 import random
+from collections import deque
 
 if (sys.version_info > (3, 0)):
     print("Python 3.X detected")
@@ -29,6 +30,7 @@ class Game:
     def __init__(self):
         self.units = {} # set of unique unit ids
         self.tiles = {}
+        self.dir = {}
         self.resourceCords = set()
         self.first = True
         self.discoveryUnits = []
@@ -37,6 +39,7 @@ class Game:
     def gameResponse(self, json_data):
         self.updateUnits(json_data)
         self.updateTiles(json_data)
+
         print self.resourceCords
         if self.first:
             response = self.firstMove()
@@ -109,6 +112,53 @@ class Game:
                 except:
                     pass
             self.tiles[(x,y)] = Tile(visible, x, y, blocked, resources)
+
+    def moveUnits(self):
+        for unit in self.units.values():
+            if unit.player_id==my_id and unit.unit_type=='worker' and unit.status=='idle':
+                # head home by default
+                command = {"commands": [{"command": move, "unit": unit, "dir": self.get_direction(unit.x, unit.y, 0, 0)}]}
+
+                if unit.resources==0:
+                    try:
+                        coord = resourceCords.pop()
+                        command = {"commands": [{"command": move, "unit": unit, "dir": self.get_direction(unit.x, unit.y, coord)}]}
+                        resourceCords.add(coord)
+                    catch:
+                        command = {"commands": [{"command": move, "unit": unit, "dir": self.explore(unit.x, unit.y)}]}
+
+    def get_direction(x0, y0, x1, y1):
+        if (x0,y0,x1,y1) in dir.keys():
+            return dir[(x0,y0,x1,y1)]
+
+        self.bfs(x1, y1)
+        return dir[(x0,y0,x1,y1)]
+
+    def bfs(x0, y0):
+        q = deque([])
+        dir[(x0, y0, x0, y0)] = 'X'
+        q.append((x0,y0))
+
+        while len(q)>0:
+            x, y = q.popleft()
+
+            # north
+            if not (x,y-1,x0,y0) in dir.keys() and (x,y-1) in tiles.keys() and not tiles[(x,y-1)].blocked:
+                dir[(x,y-1,x0,y0)] = 'S'
+                q.append((x,y-1))
+            # south
+            if not (x,y+1,x0,y0) in dir.keys() and (x,y+1) in tiles.keys() and not tiles[(x,y+1)].blocked:
+                dir[(x,y+1,x0,y0)] = 'N'
+                q.append((x,y+1))
+            # east
+            if not (x+1,y,x0,y0) in dir.keys() and (x+1,y) in tiles.keys() and not tiles[(x+1,y)].blocked:
+                dir[(x,y+1,x0,y0)] = 'W'
+                q.append((x+1,y))
+            # west
+            if not (x-1,y,x0,y0) in dir.keys() and (x-1,y) in tiles.keys() and not tiles[(x-1,y)].blocked:
+                dir[(x,y+1,x0,y0)] = 'E'
+                q.append((x-1,y))
+
 
 class Unit:
     def __init__(self, id, player_id, x, y, unit_type, status, health, resources, can_attack):
